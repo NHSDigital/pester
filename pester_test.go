@@ -48,7 +48,7 @@ func TestConcurrentRequestsWithCustomResponseCodeHandlerDefaultClient(t *testing
 	c := New()
 	c.Concurrency = 3
 	c.KeepLog = true
-	c.isRetryable = func(statusCode int) bool {
+	c.IsRetryable = func(statusCode int) bool {
 		return statusCode > 500 || statusCode == 418
 	}
 

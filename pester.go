@@ -285,7 +285,7 @@ func (c *Client) pester(p params) (*http.Response, error) {
 					err = ErrUnexpectedMethod
 				}
 
-				if c.isRetryable != nil && !c.isRetryable(resp.StatusCode) {
+				if err == nil && c.IsRetryable != nil && !c.IsRetryable(resp.StatusCode) {
 					// As below, but with custom retryable function
 					multiplexCh <- result{resp: resp, err: err, req: n, retry: i}
 					return
