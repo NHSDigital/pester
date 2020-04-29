@@ -103,6 +103,7 @@ func New() *Client {
 		ErrLog:         DefaultClient.ErrLog,
 		wg:             &sync.WaitGroup{},
 		RetryOnHTTP429: false,
+		isRetryable:    nil,
 	}
 }
 
