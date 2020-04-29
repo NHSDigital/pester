@@ -42,6 +42,40 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 }
 
+func TestConcurrentRequestsWithCustomResponseCodeHandlerDefaultClient(t *testing.T) {
+	t.Parallel()
+
+	c := New()
+	c.Concurrency = 3
+	c.KeepLog = true
+	c.isRetryable = func(statusCode int) bool {
+		return statusCode > 500 || statusCode == 418
+	}
+
+	port, err := serverWith418()
+	if err != nil {
+		t.Fatal("unable to start server", err)
+	}
+
+	url := fmt.Sprintf("http://localhost:%d", port)
+
+	response, err := c.Get(url)
+	if err != nil {
+		t.Fatal("unable to GET", err)
+	}
+	c.Wait()
+
+	response.Body.Close()
+	c.Wait()
+
+	// in the event of an error, let's see what the logs were
+	t.Log("\n", c.LogString())
+
+	if got, want := c.LogErrCount(), 0; got != want {
+		t.Errorf("got %d attempts, want %d", got, want)
+	}
+}
+
 func TestConcurrentRequestsWith429DefaultClient(t *testing.T) {
 	t.Parallel()
 
@@ -835,6 +869,36 @@ func serverWith429() (int, error) {
 	go func() {
 		if err := http.Serve(l, mux); err != nil {
 			log.Fatalf("slow-server error %v", err)
+		}
+	}()
+
+	var port int
+	_, sport, err := net.SplitHostPort(l.Addr().String())
+	if err == nil {
+		port, err = strconv.Atoi(sport)
+	}
+
+	if err != nil {
+		return -1, fmt.Errorf("unable to determine port %v", err)
+	}
+
+	return port, nil
+}
+
+func serverWith418() (int, error) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("418 I'm a teapot"))
+	})
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return -1, fmt.Errorf("unable to secure listener %v", err)
+	}
+	go func() {
+		if err := http.Serve(l, mux); err != nil {
+			log.Fatalf("server accidentally replaced by teapot error %v", err)
 		}
 	}()
 

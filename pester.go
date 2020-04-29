@@ -52,6 +52,7 @@ type Client struct {
 	sync.Mutex
 	ErrLog         []ErrEntry
 	RetryOnHTTP429 bool
+	isRetryable    func(statusCode int) bool
 }
 
 // ErrEntry is used to provide the LogString() data and is populated
@@ -283,10 +284,13 @@ func (c *Client) pester(p params) (*http.Response, error) {
 					err = ErrUnexpectedMethod
 				}
 
-				// Early return if we have a valid result
-				// Only retry (ie, continue the loop) on 5xx status codes and 429
-
-				if err == nil && resp.StatusCode < 500 && (resp.StatusCode != 429 || (resp.StatusCode == 429 && !c.RetryOnHTTP429)) {
+				if c.isRetryable != nil && !c.isRetryable(resp.StatusCode) {
+					// As below, but with custom retryable function
+					multiplexCh <- result{resp: resp, err: err, req: n, retry: i}
+					return
+				} else if err == nil && resp.StatusCode < 500 && (resp.StatusCode != 429 || (resp.StatusCode == 429 && !c.RetryOnHTTP429)) {
+					// Early return if we have a valid result
+					// Only retry (ie, continue the loop) on 5xx status codes and 429
 					multiplexCh <- result{resp: resp, err: err, req: n, retry: i}
 					return
 				}
