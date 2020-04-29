@@ -52,7 +52,7 @@ type Client struct {
 	sync.Mutex
 	ErrLog         []ErrEntry
 	RetryOnHTTP429 bool
-	isRetryable    func(statusCode int) bool
+	IsRetryable    func(statusCode int) bool
 }
 
 // ErrEntry is used to provide the LogString() data and is populated
@@ -103,7 +103,7 @@ func New() *Client {
 		ErrLog:         DefaultClient.ErrLog,
 		wg:             &sync.WaitGroup{},
 		RetryOnHTTP429: false,
-		isRetryable:    nil,
+		IsRetryable:    nil,
 	}
 }
 
